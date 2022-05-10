@@ -1,0 +1,29 @@
+- name: Patching
+  hosts: all
+  become: yes
+  tasks:
+    - name: checking exclude variable
+      shell: echo "Excluding packages on $(date) are  {{ redhat_exclude }} " >> excluders
+      when: ansible_facts['os_family'] == "RedHat"
+
+    - name: excluding packages
+      shell: echo "Excluding packages on $(date) are  {{ ubuntu_exclude }}" >> excluders
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Updating all the packages.
+      yum:
+        name: '*'
+        security: yes
+        state: latest
+        exclude: "{{ redhat_exclude }}"
+      when: ansible_facts['os_family'] == "RedHat"
+
+
+    - name: Holding packages to prevent from Patch
+      command: "apt-mark hold {{ ubuntu_exclude }}"
+      when: ansible_facts['os_family'] == "Debian" and ubuntu_exclude != ""
+      #ignore_errors: yes
+
+    - name: updating after holding
+      shell: 'apt-get -s dist-upgrade | grep "^Inst" | grep -i securi | awk -F " " {"print $2"} | xargs apt-get install'
+      when: ansible_facts['os_family'] == "Debian"
