@@ -1,11 +1,21 @@
 - name: Patching
   hosts: all
   become: yes
+  vars_prompt:
+    - name: redhat_exclude
+      prompt:  Please enter the packages that you wanna excluding(with leading * if required), For RedHat family only  'Ex:java*,foo*'.
+      private: no
+
+    - name: ubuntu_exclude
+      prompt: Please include packages that you wanna exlude from patching seperated by space. For Ubuntu only  'Ex:python java'.
+      private: no
+
+
   tasks:
     - name: checking exclude variable
       shell: echo "Excluding packages on $(date) are  {{ redhat_exclude }} " >> excluders
       when: ansible_facts['os_family'] == "RedHat"
-
+   
     - name: excluding packages
       shell: echo "Excluding packages on $(date) are  {{ ubuntu_exclude }}" >> excluders
       when: ansible_facts['os_family'] == "Debian"
@@ -20,10 +30,18 @@
 
 
     - name: Holding packages to prevent from Patch
-      command: "apt-mark hold {{ ubuntu_exclude }}"
-      when: ansible_facts['os_family'] == "Debian" and ubuntu_exclude != ""
+      command: "apt-mark hold {{ ubuntu_exclude }}" 
+      when: ansible_facts['os_family'] == "Debian" and ubuntu_exclude != "" 
       #ignore_errors: yes
 
     - name: updating after holding
       shell: 'apt-get -s dist-upgrade | grep "^Inst" | grep -i securi | awk -F " " {"print $2"} | xargs apt-get install'
       when: ansible_facts['os_family'] == "Debian"
+
+    #- name: holding python for testing
+     # shell: apt-mark hold python
+      #when: ansible_facts['os_family'] == "Debian"
+
+      #when: ansible_facts['os_family'] == "Suse"
+      #when: ansible_facts['os_family'] == "Debian"
+      #dpkg_selections --> can use for holding
