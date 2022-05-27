@@ -1,0 +1,52 @@
+- name: Linux Patching
+  hosts: all
+  tasks:
+    - name: Check internet connectivity
+      shell: ping -c 3 google.com | grep -o "0% packet loss"
+      register: net_check 
+      
+
+    #- name: Check security updates
+    #  shell: yum check-update --security | grep -A 10000 'package'
+    #  register: security
+    #  args:
+    #    warn: false
+
+    - name: check security updates [RedHat]
+      shell: |
+        echo -n "IP address: " > "$(hostname)_{{ ansible_ssh_host }}"
+        echo  "{{ ansible_ssh_host }}"  >> "$(hostname)_{{ ansible_ssh_host }}"
+        echo "Hostname: $(hostname)" >> "$(hostname)_{{ ansible_ssh_host }}"
+        echo "=====================================" >> "$(hostname)_{{ ansible_ssh_host }}"
+        yum update --security --assumeno | grep -A 10000  "package" >> "$(hostname)_{{ ansible_ssh_host }}"
+      args:
+        warn: false
+      when: ansible_facts['os_family'] == "RedHat" and net_check.stdout == "0% packet loss"
+
+
+    - name: check security updates [Ubuntu]
+      shell: |
+        echo -n "IP address : " > "$(hostname)_{{ ansible_ssh_host }}"
+        echo "{{ ansible_ssh_host }}" >> "$(hostname)_{{ ansible_ssh_host }}"
+        echo "Hostname: $(hostname)" >> "$(hostname)_{{ ansible_ssh_host }}"
+        echo  "=========================================" >> "$(hostname)_{{ ansible_ssh_host }}"
+        apt list --upgradable 2>/dev/null | grep "\-security"  >> "$(hostname)_{{ ansible_ssh_host }}"
+      when: ansible_facts['os_family'] == "Debian" and net_check.stdout == "0% packet loss"
+
+    - name: Knowing hostname
+      shell: hostname
+      register: hostname
+
+    - name: Creating directory
+      file:
+        path: security
+        state: directory
+
+    - name: Fetching all the files
+      fetch:
+        src: "{{ hostname.stdout }}_{{ ansible_ssh_host }}"
+        dest: security/
+        flat: yes
+
+
+      #when: ansible_facts['os_family'] == "Suse"
